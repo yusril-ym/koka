@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platform Belajar Koding & AI</title>
+    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/3662/3662830.png">
+    
+    <!-- 1. Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- 3. Babel (Untuk JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .animate-fade-in-up { animation: fadeInUp 0.5s ease-out; }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- KONFIGURASI GOOGLE SHEET ---
+        // Masukkan URL Web App Google Script Anda di sini
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwHYopcaNilFAX06Ro5Qf3B5u50fBBZITb-J9Sk4x9fZ8D-KM-1n3uV3TXL31SJXiHc/exec"; 
+
+        const sendToSheet = (dataPayload) => {
+            if (!GOOGLE_SCRIPT_URL) {
+                console.warn("URL Google Script belum dipasang. Data tidak tersimpan.");
+                return;
+            }
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(dataPayload),
+            }).catch(err => console.error("Gagal kirim:", err));
+        };
+
+        // --- IKON (SVG Components) ---
+        // Didefinisikan manual agar tidak perlu build tools
+        const Icon = ({ path, className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {path}
+            </svg>
+        );
+
+        // Perbaikan: Semua elemen path ganda dibungkus dengan Fragment <></>
+        const Icons = {
+            BookOpen: (p) => <Icon {...p} path={<><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>} />,
+            Cpu: (p) => <Icon {...p} path={<><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3"/><path d="M15 1v3"/><path d="M9 20v3"/><path d="M15 20v3"/><path d="M20 9h3"/><path d="M20 14h3"/><path d="M1 9h3"/><path d="M1 14h3"/></>} />,
+            BrainCircuit: (p) => <Icon {...p} path={<><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M19.938 10.5a4 4 0 0 1 .585.396"/><path d="M6 18a4 4 0 0 1-1.97-1.364"/><path d="M19.97 16.636A4 4 0 0 1 18 18"/></>} />,
+            Users: (p) => <Icon {...p} path={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>} />,
+            Menu: (p) => <Icon {...p} path={<><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></>} />,
+            X: (p) => <Icon {...p} path={<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>} />,
+            ChevronRight: (p) => <Icon {...p} path={<path d="m9 18 6-6-6-6"/>} />,
+            ChevronLeft: (p) => <Icon {...p} path={<path d="m15 18-6-6 6-6"/>} />,
+            CheckCircle: (p) => <Icon {...p} path={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>} />,
+            Lightbulb: (p) => <Icon {...p} path={<><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-1 1.5-2.4 1.5-3.8 0-3.2-2.5-6-5.7-6-3.4 0-6 2.8-6 6.3 0 1.4.6 2.8 1.5 3.8.9.8 1.4 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></>} />,
+            AlertTriangle: (p) => <Icon {...p} path={<><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>} />,
+            Code: (p) => <Icon {...p} path={<><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></>} />,
+            Database: (p) => <Icon {...p} path={<><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></>} />,
+            Lock: (p) => <Icon {...p} path={<><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>} />,
+            Unlock: (p) => <Icon {...p} path={<><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></>} />,
+            Clock: (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>} />,
+            PlayCircle: (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></>} />,
+            Award: (p) => <Icon {...p} path={<><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></>} />,
+            LogOut: (p) => <Icon {...p} path={<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></>} />,
+            FileText: (p) => <Icon {...p} path={<><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></>} />,
+            HelpCircle: (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></>} />,
+            Download: (p) => <Icon {...p} path={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>} />,
+            ExternalLink: (p) => <Icon {...p} path={<><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></>} />,
+            Gamepad2: (p) => <Icon {...p} path={<><line x1="6" x2="10" y1="12" y2="12"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="15" x2="15.01" y1="13" y2="13"/><line x1="18" x2="18.01" y1="11" y2="11"/><rect width="20" height="12" x="2" y="6" rx="2"/></>} />,
+            Coffee: (p) => <Icon {...p} path={<><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="1" y2="4"/><line x1="10" x2="10" y1="1" y2="4"/><line x1="14" x2="14" y1="1" y2="4"/></>} />,
+            ThumbsUp: (p) => <Icon {...p} path={<><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></>} />,
+            ThumbsDown: (p) => <Icon {...p} path={<><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></>} />,
+            ArrowUp: (p) => <Icon {...p} path={<><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></>} />,
+            ArrowDown: (p) => <Icon {...p} path={<><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></>} />,
+            RefreshCw: (p) => <Icon {...p} path={<><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></>} />,
+            Smile: (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></>} />,
+            Frown: (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></>} />,
+            Sparkles: (p) => <Icon {...p} path={<path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>} />,
+            Info: (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></>} />,
+            Mail: (p) => <Icon {...p} path={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></>} />,
+            Target: (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></>} />
+        };
+
+        // --- DATA KUIS ---
+        const quizzes = {
+            1: [
+                { q: "Apa tujuan utama Indonesia mengintegrasikan Koding dan KA dalam kurikulum?", options: ["Agar siswa bisa merakit komputer", "Meningkatkan SDM unggul di era Revolusi Industri 4.0", "Menggantikan peran guru dengan robot", "Meniru kurikulum negara barat sepenuhnya"], ans: 1 },
+                { q: "Dokumen perencanaan pembangunan apa yang sejalan dengan penguatan literasi digital ini?", options: ["UUD 1945 Amandemen 1", "RPJPN (Rencana Pembangunan Jangka Panjang Nasional)", "Peraturan Desa", "Anggaran Rumah Tangga Sekolah"], ans: 1 },
+                { q: "Negara mana yang menjadi inspirasi keberhasilan integrasi koding?", options: ["Singapura dan Korea Selatan", "Brazil dan Argentina", "Mesir dan Afrika Selatan", "Italia dan Spanyol"], ans: 0 },
+                { q: "Manakah yang BUKAN tujuan mata pelajaran ini?", options: ["Berpikir Komputasional", "Kecakapan Warga Digital", "Menjadi hacker profesional", "Pengelolaan Data"], ans: 2 },
+                { q: "Apa perbedaan utama antara Koding dan Pemrograman?", options: ["Sama saja", "Koding itu luas, Pemrograman itu sempit", "Koding menerjemahkan ide ke sintaks, Pemrograman mencakup perencanaan hingga testing", "Koding untuk manusia, Pemrograman untuk hewan"], ans: 2 },
+                { q: "Elemen 'Berpikir Komputasional' bertujuan untuk...", options: ["Menghafal kode", "Problem solving yang logis dan sistematis", "Membeli komputer mahal", "Bermain game seharian"], ans: 1 },
+                { q: "Apa definisi singkat dari Kecerdasan Artifisial (KA)?", options: ["Sistem komputer peniru fungsi kognitif manusia", "Mesin pencari internet", "Hardware komputer baru", "Aplikasi pengolah kata"], ans: 0 },
+                { q: "Apa yang dimaksud dengan Artificial Narrow Intelligence (ANI)?", options: ["AI yang memiliki kesadaran", "AI yang bisa melakukan segala hal", "AI yang spesifik pada satu tugas tertentu", "AI yang tidak membutuhkan listrik"], ans: 2 },
+                { q: "Karakteristik mata pelajaran ini bersifat 'Holistik', artinya...", options: ["Hanya fokus pada teknis", "Hanya fokus pada etika", "Mencakup teknis, etika, dan relevansi kehidupan", "Tidak ada hubungannya dengan sekolah"], ans: 2 },
+                { q: "Profil Pelajar Pancasila masuk dalam aspek apa pada mata pelajaran ini?", options: ["Koding", "Analisis Data", "Karakteristik & Elemen", "Sejarah Komputer"], ans: 2 },
+            ],
+            2: [
+                { q: "Apa definisi Berpikir Komputasional?", options: ["Berpikir seperti robot", "Proses berpikir memformulasikan masalah agar dapat diproses agen informasi", "Berpikir cepat tanpa logika", "Menghitung angka dengan cepat"], ans: 1 },
+                { q: "Manakah yang termasuk 4 Pilar Berpikir Komputasional?", options: ["Reboot, Shutdown, Sleep, Hibernate", "Dekomposisi, Pengenalan Pola, Abstraksi, Algoritma", "Input, Proses, Output, Storage", "Monitor, CPU, Mouse, Keyboard"], ans: 1 },
+                { q: "Memecah masalah besar menjadi bagian kecil disebut...", options: ["Dekomposisi", "Abstraksi", "Algoritma", "Reboisasi"], ans: 0 },
+                { q: "Mengabaikan detail yang tidak relevan (noise) adalah konsep...", options: ["Pengenalan Pola", "Abstraksi", "Dekomposisi", "Sekuensial"], ans: 1 },
+                { q: "Resep masakan adalah contoh sederhana dari...", options: ["Abstraksi", "Algoritma", "Variabel", "Looping"], ans: 1 },
+                { q: "Dalam model IPO, apa yang terjadi di tengah?", options: ["Input", "Output", "Proses", "Delete"], ans: 2 },
+                { q: "Apa fungsi Variabel dalam koding?", options: ["Menghapus data", "Wadah untuk menyimpan data yang nilainya bisa berubah", "Mempercepat internet", "Mendinginkan komputer"], ans: 1 },
+                { q: "Struktur kontrol 'Jika skor > 50, maka Lulus' disebut...", options: ["Sekuensial", "Perulangan (Loop)", "Percabangan (Selection)", "Abstraksi"], ans: 2 },
+                { q: "Metode belajar tanpa perangkat elektronik disebut...", options: ["Plugged", "Unplugged", "Wireless", "Online"], ans: 1 },
+                { q: "Mencari kesamaan tren dalam data disebut...", options: ["Pengenalan Pola", "Dekomposisi", "Abstraksi", "Algoritma"], ans: 0 },
+            ],
+            3: [
+                { q: "Karakteristik utama mesin cerdas (AI) adalah...", options: ["Bekerja sesuai aturan kaku", "Belajar dari data dan mengenali pola", "Tidak butuh listrik", "Hanya bisa menghitung"], ans: 1 },
+                { q: "Mesin non-cerdas bekerja berdasarkan...", options: ["Pola data", "Intuisi", "Aturan kaku (Rule-based)", "Perasaan"], ans: 2 },
+                { q: "Apa itu Machine Learning?", options: ["Mesin belajar dari data tanpa diprogram eksplisit", "Mesin yang dirakit robot", "Pembelajaran jarak jauh", "Mesin fotokopi"], ans: 0 },
+                { q: "Deep Learning menggunakan struktur yang disebut...", options: ["Tree Chart", "Artificial Neural Networks", "Pie Chart", "Flowchart"], ans: 1 },
+                { q: "AI yang mampu menciptakan konten baru disebut...", options: ["Reactive AI", "Generative AI", "Passive AI", "Narrow AI"], ans: 1 },
+                { q: "Apa langkah pertama dalam siklus kerja KA sederhana?", options: ["Inference", "Training", "Data Collection", "Evaluation"], ans: 2 },
+                { q: "Istilah 'Garbage in, garbage out' berkaitan dengan...", options: ["Sampah elektronik", "Kualitas data melatih AI", "Kecepatan internet", "Harga komputer"], ans: 1 },
+                { q: "Salah satu limitasi AI adalah...", options: ["Terlalu pintar", "Tidak punya Common Sense", "Tidak butuh data", "Bisa merasa sedih"], ans: 1 },
+                { q: "Contoh mesin cerdas di kehidupan sehari-hari adalah...", options: ["Kalkulator pasar", "Kipas angin manual", "Rekomendasi YouTube", "Lampu bohlam"], ans: 2 },
+                { q: "Apa itu Inference dalam siklus AI?", options: ["Mengumpulkan data", "Melatih model", "Membuat prediksi pada data baru", "Menghapus data"], ans: 2 },
+            ],
+            4: [
+                { q: "Contoh pemanfaatan AI di bidang kesehatan adalah...", options: ["Mobil otonom", "Deteksi penyakit dini dari citra medis", "Filter Instagram", "Chatbot edukasi"], ans: 1 },
+                { q: "Orang yang membuat dan melatih sistem AI disebut...", options: ["User", "Developer", "Gamer", "Influencer"], ans: 1 },
+                { q: "Apa itu Algorithmic Bias?", options: ["AI yang sangat cepat", "Ketidakadilan keputusan AI akibat data bias", "AI yang bisa menari", "Kerusakan hardware"], ans: 1 },
+                { q: "Risiko manipulasi video/suara realistis disebut...", options: ["Photoshop", "Deepfake", "Editing", "CGI"], ans: 1 },
+                { q: "Fenomena AI memberikan jawaban meyakinkan tapi salah total disebut...", options: ["Halusinasi AI", "Imajinasi AI", "Kreativitas AI", "Kebohongan AI"], ans: 0 },
+                { q: "Strategi bijak 'Verifikasi' artinya...", options: ["Menerima semua info AI", "Selalu cek ulang informasi dari AI", "Membagikan info langsung", "Menghapus aplikasi AI"], ans: 1 },
+                { q: "Mengapa kita tidak boleh membagi NIK ke AI publik?", options: ["AI akan marah", "Risiko keamanan dan privasi data", "Kuota internet habis", "AI tidak bisa membacanya"], ans: 1 },
+                { q: "Peran manusia saat menggunakan AI sebaiknya sebagai...", options: ["Budak AI", "Penonton", "Co-pilot yang berpikir kritis", "Objek percobaan"], ans: 2 },
+                { q: "Pemanfaatan AI untuk optimasi rute ada di bidang...", options: ["Hiburan", "Transportasi", "Kesehatan", "Pendidikan"], ans: 1 },
+                { q: "Apa tujuan Chatbot Edukasi?", options: ["Menggantikan guru selamanya", "Membantu siswa belajar (Personalisasi)", "Membuat siswa malas", "Bermain game"], ans: 1 },
+            ]
+        };
+
+        // --- DATA KONTEN MODUL ---
+        const modules = [
+            {
+                id: 1,
+                title: "Modul 1: Pengantar Kurikulum Nasional",
+                icon: <Icons.BookOpen className="w-5 h-5" />,
+                color: "blue",
+                driveLink: "https://drive.google.com/file/d/1GsvzdqjeXuRpIdb-WZlj0VhFoeS09hE5/view?usp=drive_link",
+                content: {
+                    intro: "Pengantar yang menempatkan mata pelajaran Koding dan Kecerdasan Artifisial (KA) dalam konteks kurikulum nasional dan pembangunan jangka panjang Indonesia.",
+                    sections: [
+                        {
+                            title: "Latar Belakang & Rasional",
+                            items: [
+                                { subtitle: "Pentingnya Keterampilan Digital", text: "Indonesia bertujuan meningkatkan SDM unggul di era Revolusi Industri 4.0 dan Masyarakat 5.0. Adaptabilitas dan inovasi adalah kunci." },
+                                { subtitle: "RPJPN & Transformasi Digital", text: "Penguatan literasi digital sejalan dengan Rencana Pembangunan Jangka Panjang Nasional untuk ekonomi digital dan daya saing global." },
+                                { subtitle: "Inspirasi Global", text: "Belajar dari keberhasilan negara seperti Singapura dan Korea Selatan dalam integrasi kurikulum koding." }
+                            ]
+                        },
+                        {
+                            title: "Tujuan Mata Pelajaran",
+                            type: "grid",
+                            items: [
+                                { icon: <Icons.Cpu />, title: "Berpikir Komputasional", text: "Solusi logis, sistematis, kritis, dan kreatif." },
+                                { icon: <Icons.Users />, title: "Warga Digital", text: "Bijak, beretika, aman, dan produktif." },
+                                { icon: <Icons.Database />, title: "Pengelolaan Data", text: "Terampil mengelola dan memanfaatkan data." },
+                                { icon: <Icons.Code />, title: "Keterampilan Berkarya", text: "Menghasilkan program/solusi nyata." }
+                            ]
+                        },
+                        {
+                            title: "Koding vs Pemrograman",
+                            type: "comparison",
+                            left: { title: "Koding", text: "Bagian spesifik: Menerjemahkan ide menjadi kode (sintaks) yang dipahami mesin." },
+                            right: { title: "Pemrograman", text: "Proses luas: Perencanaan, analisis, algoritma, koding, testing, hingga pemeliharaan." }
+                        },
+                        {
+                            title: "Pengantar Singkat KA",
+                            items: [
+                                { subtitle: "Definisi", text: "Sistem komputer yang meniru fungsi kognitif manusia (belajar, memecahkan masalah)." },
+                                { subtitle: "Lanskap", text: "Mencakup Artificial Narrow Intelligence (ANI) hingga potensi Artificial General Intelligence (AGI)." }
+                            ]
+                        }
+                    ]
+                }
+            },
+            {
+                id: 2,
+                title: "Modul 2: Berpikir Komputasional",
+                icon: <Icons.Code className="w-5 h-5" />,
+                color: "emerald",
+                driveLink: "https://drive.google.com/file/d/1w6nrvtGmOimYy4GaHVVcfOXR2VIPhcPN/view?usp=drive_link",
+                content: {
+                    intro: "Mendalami fondasi berpikir sebelum menulis kode. Bukan 'berpikir seperti komputer', tapi berpikir logis untuk memberi instruksi.",
+                    sections: [
+                        {
+                            title: "4 Pilar Berpikir Komputasional",
+                            type: "cards",
+                            items: [
+                                { title: "Dekomposisi", text: "Memecah masalah besar menjadi bagian kecil.", example: "Contoh: Game dibagi jadi desain karakter, aturan, skor." },
+                                { title: "Pengenalan Pola", text: "Mencari kesamaan/tren untuk solusi efisien.", example: "Contoh: Menggunakan loop untuk kode yang berulang." },
+                                { title: "Abstraksi", text: "Fokus pada inti, abaikan detail tak relevan.", example: "Contoh: Peta fokus pada jalan, bukan warna atap rumah." },
+                                { title: "Algoritma", text: "Langkah logis, urut, dan terstruktur.", example: "Contoh: Resep masakan." }
+                            ]
+                        },
+                        {
+                            title: "Konsep Dasar Koding (IPO)",
+                            type: "interactive_ipo",
+                            text: "Model dasar komputer: Input -> Proses -> Output."
+                        },
+                        {
+                            title: "Struktur Kontrol",
+                            items: [
+                                { subtitle: "Sekuensial", text: "Langkah dijalankan satu per satu dari atas ke bawah." },
+                                { subtitle: "Percabangan (If/Else)", text: "Keputusan berdasarkan kondisi. Contoh: Jika skor > 50, Lulus." },
+                                { subtitle: "Perulangan (Loop)", text: "Mengulang langkah sampai kondisi terpenuhi." }
+                            ]
+                        }
+                    ]
+                }
+            },
+            {
+                id: 3,
+                title: "Modul 3: Konsep Dasar AI",
+                icon: <Icons.BrainCircuit className="w-5 h-5" />,
+                color: "purple",
+                driveLink: "https://drive.google.com/file/d/1kjYbBbzGo3VYc8VG5MfTSC1gyH5Cb4zs/view?usp=drive_link",
+                content: {
+                    intro: "Teknis dasar AI, bagaimana mesin 'belajar', dan batasan-batasannya.",
+                    sections: [
+                        {
+                            title: "Karakteristik KA",
+                            items: [
+                                { subtitle: "Belajar dari Data", text: "Kinerja meningkat seiring bertambahnya data latih." },
+                                { subtitle: "Adaptabilitas", text: "Bisa menyesuaikan diri dengan input baru." },
+                                { subtitle: "Otomatisasi Keputusan", text: "Mengambil tindakan berdasarkan pola." }
+                            ]
+                        },
+                        {
+                            title: "Mesin Cerdas vs Non-Cerdas",
+                            type: "comparison",
+                            left: { title: "Non-Cerdas", text: "Aturan kaku (Rule-based). Gagal jika input di luar aturan. Contoh: Kalkulator." },
+                            right: { title: "Cerdas (AI)", text: "Berbasis pola data. Bisa menangani input baru yang mirip. Contoh: Face ID." }
+                        },
+                        {
+                            title: "Jenis-Jenis KA",
+                            type: "list_highlight",
+                            items: [
+                                "Machine Learning (ML): Belajar tanpa diprogram eksplisit.",
+                                "Deep Learning (DL): Menggunakan Neural Networks untuk data kompleks (gambar/suara).",
+                                "Generative AI: Menciptakan konten baru (teks/gambar) dari pola."
+                            ]
+                        },
+                        {
+                            title: "Limitasi",
+                            type: "alert",
+                            text: "AI bergantung pada kualitas data ('Garbage in, garbage out'), tidak punya akal sehat (common sense), dan bisa mewarisi bias data."
+                        }
+                    ]
+                }
+            },
+            {
+                id: 4,
+                title: "Modul 4: Pemanfaatan & Etika",
+                icon: <Icons.Users className="w-5 h-5" />,
+                color: "rose",
+                driveLink: "https://drive.google.com/file/d/1gLH4zECdjedsGyfV-PXitYe-yxdM-BP8/view?usp=drive_link",
+                content: {
+                    intro: "Aplikasi nyata, dampak, dan etika penggunaan AI dalam kehidupan sehari-hari.",
+                    sections: [
+                        {
+                            title: "Bidang Pemanfaatan",
+                            type: "grid_simple",
+                            items: [
+                                { label: "Pendidikan", val: "Personalisasi belajar, Chatbot Edukasi." },
+                                { label: "Kesehatan", val: "Deteksi penyakit dini, obat baru." },
+                                { label: "Transportasi", val: "Mobil otonom, optimasi rute." },
+                                { label: "Hiburan", val: "Rekomendasi film, filter medsos." }
+                            ]
+                        },
+                        {
+                            title: "Tantangan & Etika (Critical Issues)",
+                            items: [
+                                { subtitle: "Algorithmic Bias", text: "Ketidakadilan akibat data bias (misal: diskriminasi rekrutmen)." },
+                                { subtitle: "Deepfake", text: "Manipulasi video/suara realistis untuk hoaks." },
+                                { subtitle: "Halusinasi AI", text: "AI Generatif memberikan jawaban meyakinkan tapi salah total." }
+                            ]
+                        },
+                        {
+                            title: "Strategi Bijak",
+                            type: "checklist",
+                            items: [
+                                "Verifikasi (Fact-Checking) informasi AI.",
+                                "Keamanan Data: Jangan sebar NIK/Password ke AI.",
+                                "Berpikir Kritis: AI adalah Co-pilot, bukan pengganti otak."
+                            ]
+                        }
+                    ]
+                }
+            }
+        ];
+
+        // --- KOMPONEN PENDUKUNG ---
+        const Card = ({ children, className = "", color = "blue" }) => {
+            const borderColors = {
+                blue: "hover:border-blue-400",
+                emerald: "hover:border-emerald-400",
+                purple: "hover:border-purple-400",
+                rose: "hover:border-rose-400"
+            };
+            return (
+                <div className={`bg-white rounded-2xl shadow-sm border-2 border-transparent hover:shadow-lg transition-all duration-300 p-6 ${borderColors[color]} ${className}`}>
+                    {children}
+                </div>
+            );
+        };
+
+        const Badge = ({ text, color = "blue" }) => {
+            const colors = {
+                blue: "bg-blue-100 text-blue-700 border-blue-200",
+                emerald: "bg-emerald-100 text-emerald-700 border-emerald-200",
+                purple: "bg-purple-100 text-purple-700 border-purple-200",
+                rose: "bg-rose-100 text-rose-700 border-rose-200",
+            };
+            return (
+                <span className={`px-4 py-1.5 rounded-full text-xs font-bold border uppercase tracking-wide shadow-sm ${colors[color] || colors.blue}`}>
+                    {text}
+                </span>
+            );
+        };
+
+        // --- KOMPONEN INFO VIEW ---
+        const InfoView = () => (
+            <div className="max-w-4xl mx-auto space-y-8 pb-24 animate-fade-in-up">
+                <header className="space-y-6">
+                    <div className="relative">
+                        <h1 className="text-4xl md:text-5xl font-black text-slate-900 leading-tight mb-4 tracking-tight">Informasi Platform</h1>
+                        <div className="h-2 w-24 rounded-full bg-gradient-to-r from-indigo-400 to-purple-200"></div>
+                    </div>
+                </header>
+                <div className="space-y-6">
+                    <div className="bg-white p-8 rounded-3xl border-2 border-indigo-50 shadow-sm relative overflow-hidden group hover:border-indigo-200 transition">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="p-3 bg-indigo-100 rounded-xl text-indigo-600"><Icons.Target className="w-6 h-6" /></div>
+                            <h2 className="text-2xl font-bold text-slate-800">Tujuan Platform</h2>
+                        </div>
+                        <p className="text-slate-600 leading-relaxed font-medium">Platform ini bertujuan untuk menyediakan media pembelajaran yang interaktif dan mudah diakses bagi peserta didik dalam memahami materi Koding dan Kecerdasan Artifisial sesuai Kurikulum Nasional.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white p-8 rounded-3xl border-2 border-purple-50 shadow-sm hover:border-purple-200 transition">
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="p-3 bg-purple-100 rounded-xl text-purple-600"><Icons.Users className="w-6 h-6" /></div>
+                                <h2 className="text-xl font-bold text-slate-800">Pengembang</h2>
+                            </div>
+                            <div className="font-bold text-lg text-slate-700">Yusril Yahya Muhaimin, S.Pd.</div>
+                            <div className="text-slate-500 text-sm mt-1">Pengembang Materi & Platform</div>
+                        </div>
+                        <div className="bg-white p-8 rounded-3xl border-2 border-pink-50 shadow-sm hover:border-pink-200 transition">
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="p-3 bg-pink-100 rounded-xl text-pink-600"><Icons.Mail className="w-6 h-6" /></div>
+                                <h2 className="text-xl font-bold text-slate-800">Kontak</h2>
+                            </div>
+                            <a href="mailto:yusril531@guru.sd.belajar.id" className="font-bold text-lg text-indigo-600 hover:underline break-all block">yusril531@guru.sd.belajar.id</a>
+                            <div className="text-slate-500 text-sm mt-1">Email Resmi Belajar.id</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // --- MINI GAMES ---
+        const GameModule1 = () => {
+            const [items, setItems] = useState([
+                { id: 1, text: "Menulis Sintaks", cat: "koding" },
+                { id: 2, text: "Problem Solving", cat: "program" },
+                { id: 3, text: "Deteksi Wajah", cat: "ai" },
+                { id: 4, text: "Testing Kode", cat: "program" },
+                { id: 5, text: "Translasi Ide ke Mesin", cat: "koding" },
+            ]);
+            const [currentItem, setCurrentItem] = useState(0);
+            const [score, setScore] = useState(0);
+            const [finished, setFinished] = useState(false);
+            const [feedback, setFeedback] = useState(null);
+
+            const handleGuess = (category) => {
+                const correct = items[currentItem].cat === category;
+                setFeedback(correct ? "Benar! 🎉" : "Kurang Tepat 😅");
+                if (correct) setScore(score + 1);
+                setTimeout(() => {
+                    setFeedback(null);
+                    if (currentItem < items.length - 1) setCurrentItem(currentItem + 1);
+                    else setFinished(true);
+                }, 1000);
+            };
+
+            if (finished) return (
+                <div className="text-center p-8 bg-white/80 rounded-xl backdrop-blur-sm">
+                    <div className="w-20 h-20 bg-yellow-100 text-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce"><Icons.Award className="w-10 h-10" /></div>
+                    <h3 className="text-2xl font-black text-slate-800 mb-2">Permainan Selesai!</h3>
+                    <p className="text-lg text-slate-600 mb-6">Skor Kamu: <span className="font-bold text-indigo-600 text-2xl">{score} / {items.length}</span></p>
+                    <button onClick={() => { setFinished(false); setCurrentItem(0); setScore(0); }} className="mx-auto px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full font-bold shadow-lg flex items-center gap-2"><Icons.RefreshCw className="w-5 h-5" /> Main Lagi</button>
+                </div>
+            );
+
+            return (
+                <div className="text-center">
+                    <h3 className="font-bold text-xl mb-4 text-indigo-900">Mini Game: Sortir Konsep</h3>
+                    <div className="bg-gradient-to-br from-white to-blue-50 p-8 rounded-2xl border-4 border-blue-100 shadow-inner mb-6 h-40 flex items-center justify-center relative">
+                        {feedback && <div className="absolute inset-0 bg-white/95 rounded-xl flex items-center justify-center text-2xl font-black text-indigo-600 animate-in fade-in zoom-in">{feedback}</div>}
+                        <span className="text-2xl font-bold text-slate-700 drop-shadow-sm">{items[currentItem].text}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                        <button onClick={() => handleGuess('koding')} className="p-4 bg-gradient-to-b from-blue-400 to-blue-500 text-white rounded-xl shadow-blue-200 shadow-lg hover:-translate-y-1 transition font-bold border-b-4 border-blue-700">Koding</button>
+                        <button onClick={() => handleGuess('program')} className="p-4 bg-gradient-to-b from-emerald-400 to-emerald-500 text-white rounded-xl shadow-emerald-200 shadow-lg hover:-translate-y-1 transition font-bold border-b-4 border-emerald-700">Program</button>
+                        <button onClick={() => handleGuess('ai')} className="p-4 bg-gradient-to-b from-purple-400 to-purple-500 text-white rounded-xl shadow-purple-200 shadow-lg hover:-translate-y-1 transition font-bold border-b-4 border-purple-700">AI</button>
+                    </div>
+                    <p className="text-sm font-medium text-slate-400 mt-6 bg-slate-100 inline-block px-3 py-1 rounded-full">Kartu {currentItem + 1} dari {items.length}</p>
+                </div>
+            );
+        };
+
+        const GameModule2 = () => {
+            const correctOrder = ["Rebus Air", "Siapkan Cangkir", "Masukkan Kopi", "Tuang Air Panas", "Aduk"];
+            const [items, setItems] = useState([...correctOrder].sort(() => Math.random() - 0.5));
+            const [isCorrect, setIsCorrect] = useState(false);
+
+            const move = (idx, direction) => {
+                if ((direction === -1 && idx === 0) || (direction === 1 && idx === items.length - 1)) return;
+                const newItems = [...items];
+                const temp = newItems[idx];
+                newItems[idx] = newItems[idx + direction];
+                newItems[idx + direction] = temp;
+                setItems(newItems);
+                setIsCorrect(false);
+            };
+
+            const check = () => {
+                if (JSON.stringify(items) === JSON.stringify(correctOrder)) setIsCorrect(true);
+                else alert("Urutan masih salah, coba lagi! Petunjuk: Mulai dari merebus air.");
+            };
+
+            return (
+                <div>
+                    <h3 className="font-bold text-xl mb-4 text-center text-emerald-900">Mini Game: Algoritma Kopi</h3>
+                    <p className="text-sm text-emerald-600 mb-6 text-center bg-emerald-50 p-2 rounded-lg inline-block mx-auto">Urutkan langkah membuat kopi yang benar!</p>
+                    <div className="space-y-3 mb-6">
+                        {items.map((item, idx) => (
+                            <div key={item} className={`flex justify-between items-center p-4 rounded-xl shadow-sm border-2 transition-all ${isCorrect ? 'bg-green-100 border-green-300 scale-105' : 'bg-white border-slate-100 hover:border-emerald-200'}`}>
+                                <span className="font-bold text-slate-700 flex items-center gap-3"><span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">{idx + 1}</span>{item}</span>
+                                {!isCorrect && (
+                                    <div className="flex gap-2">
+                                        <button onClick={() => move(idx, -1)} className="p-2 hover:bg-emerald-50 rounded-lg text-emerald-400 hover:text-emerald-600 transition"><Icons.ArrowUp className="w-5 h-5" /></button>
+                                        <button onClick={() => move(idx, 1)} className="p-2 hover:bg-emerald-50 rounded-lg text-emerald-400 hover:text-emerald-600 transition"><Icons.ArrowDown className="w-5 h-5" /></button>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                    {isCorrect ? (
+                        <div className="text-center text-white font-bold bg-green-500 p-4 rounded-xl shadow-lg animate-bounce flex items-center justify-center gap-2"><Icons.Coffee className="w-6 h-6" /> Hore! Algoritma Benar! Kopi Siap.</div>
+                    ) : (
+                        <button onClick={check} className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white py-3 rounded-xl font-bold shadow-lg hover:shadow-emerald-200 hover:-translate-y-1 transition border-b-4 border-emerald-700">Cek Urutan</button>
+                    )}
+                </div>
+            );
+        };
+
+        const GameModule3 = () => {
+            const dataSet = [
+                { type: 'apel', icon: '🍎' }, { type: 'jeruk', icon: '🍊' },
+                { type: 'apel', icon: '🍎' }, { type: 'apel', icon: '🍎' },
+                { type: 'jeruk', icon: '🍊' }, { type: 'jeruk', icon: '🍊' },
+                { type: 'apel', icon: '🍎' }, { type: 'jeruk', icon: '🍊' }
+            ];
+            const [index, setIndex] = useState(0);
+            const [score, setScore] = useState(0);
+            const [finished, setFinished] = useState(false);
+
+            const train = (guess) => {
+                if (dataSet[index].type === guess) setScore(score + 1);
+                if (index < dataSet.length - 1) setIndex(index + 1);
+                else setFinished(true);
+            };
+
+            if (finished) return (
+                <div className="text-center p-8 bg-white/90 rounded-2xl">
+                    <h3 className="font-bold text-2xl mb-2 text-purple-900">Pelatihan Selesai!</h3>
+                    <p className="mb-4 text-purple-700">Akurasi Model AI Kamu:</p>
+                    <div className="text-5xl font-black text-purple-600 mb-6">{Math.round((score / dataSet.length) * 100)}%</div>
+                    <div className="w-full bg-purple-100 rounded-full h-4 mb-8 overflow-hidden"><div className="bg-gradient-to-r from-purple-500 to-pink-500 h-4 rounded-full" style={{ width: `${(score / dataSet.length) * 100}%` }}></div></div>
+                    <button onClick={() => { setFinished(false); setIndex(0); setScore(0); }} className="px-6 py-2 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-full font-bold transition flex items-center justify-center gap-2 w-full"><Icons.RefreshCw className="w-4 h-4" /> Latih Ulang</button>
+                </div>
+            );
+
+            return (
+                <div className="text-center">
+                    <h3 className="font-bold text-xl mb-2 text-purple-900">Mini Game: Latih AI</h3>
+                    <p className="text-sm text-purple-500 mb-6 bg-purple-50 inline-block px-3 py-1 rounded-full">Ajari AI membedakan data!</p>
+                    <div className="w-40 h-40 mx-auto bg-gradient-to-b from-purple-50 to-white rounded-full border-4 border-purple-100 flex items-center justify-center text-7xl mb-8 shadow-inner animate-bounce">{dataSet[index].icon}</div>
+                    <div className="flex gap-4 justify-center">
+                        <button onClick={() => train('apel')} className="flex-1 py-3 bg-red-500 text-white rounded-xl shadow-red-200 shadow-lg hover:-translate-y-1 transition font-bold border-b-4 border-red-700">Ini Apel</button>
+                        <button onClick={() => train('jeruk')} className="flex-1 py-3 bg-orange-500 text-white rounded-xl shadow-orange-200 shadow-lg hover:-translate-y-1 transition font-bold border-b-4 border-orange-700">Ini Jeruk</button>
+                    </div>
+                    <p className="text-xs font-bold text-purple-300 mt-6 uppercase tracking-wider">Data ke-{index + 1} dari {dataSet.length}</p>
+                </div>
+            );
+        };
+
+        const GameModule4 = () => {
+            const scenarios = [
+                { text: "Menggunakan AI untuk membuat PR tanpa membacanya.", ethical: false },
+                { text: "Menggunakan AI untuk mendeteksi penyakit kanker lebih dini.", ethical: true },
+                { text: "Membuat video deepfake teman untuk bahan ejekan.", ethical: false },
+                { text: "Menggunakan Chatbot untuk latihan percakapan bahasa Inggris.", ethical: true },
+            ];
+            const [idx, setIdx] = useState(0);
+            const [feedback, setFeedback] = useState(null);
+            const [finished, setFinished] = useState(false);
+
+            const decide = (isEthical) => {
+                const correct = scenarios[idx].ethical === isEthical;
+                setFeedback(correct ? "Tepat! 👍" : "Kurang Tepat 🤔");
+                setTimeout(() => {
+                    setFeedback(null);
+                    if (idx < scenarios.length - 1) setIdx(idx + 1);
+                    else setFinished(true);
+                }, 1200);
+            };
+
+            if (finished) return (
+                <div className="text-center p-8 bg-white/90 rounded-2xl">
+                    <div className="mb-4 inline-block p-4 bg-rose-100 rounded-full text-rose-500"><Icons.Sparkles className="w-8 h-8" /></div>
+                    <h3 className="font-bold text-2xl mb-2 text-rose-900">Misi Selesai!</h3>
+                    <p className="text-rose-700 mb-6">Kamu sekarang adalah Detektif Etika yang hebat.</p>
+                    <button onClick={() => { setFinished(false); setIdx(0); }} className="px-6 py-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-full font-bold transition flex items-center justify-center gap-2 w-full"><Icons.RefreshCw className="w-4 h-4" /> Main Lagi</button>
+                </div>
+            );
+
+            return (
+                <div className="text-center">
+                    <h3 className="font-bold text-xl mb-4 text-rose-900">Mini Game: Detektif Etika</h3>
+                    <div className="bg-white p-6 rounded-2xl border-4 border-rose-100 shadow-sm mb-6 h-48 flex items-center justify-center relative px-8">
+                        {feedback && <div className={`absolute inset-0 bg-white/95 rounded-xl flex flex-col items-center justify-center text-xl font-bold animate-in fade-in zoom-in gap-2 ${feedback.includes("Tepat") ? "text-green-500" : "text-amber-500"}`}>
+                            {feedback.includes("Tepat") ? <Icons.Smile className="w-12 h-12" /> : <Icons.Frown className="w-12 h-12" />}
+                            {feedback}
+                        </div>}
+                        <span className="text-lg font-medium text-slate-700 leading-relaxed font-serif italic">"{scenarios[idx].text}"</span>
+                    </div>
+                    <div className="flex gap-4 justify-center">
+                        <button onClick={() => decide(true)} className="flex-1 py-3 bg-gradient-to-b from-green-400 to-green-500 text-white rounded-xl shadow-lg hover:-translate-y-1 transition font-bold border-b-4 border-green-700 flex items-center justify-center gap-2"><Icons.ThumbsUp className="w-5 h-5" /> Etis</button>
+                        <button onClick={() => decide(false)} className="flex-1 py-3 bg-gradient-to-b from-red-400 to-red-500 text-white rounded-xl shadow-lg hover:-translate-y-1 transition font-bold border-b-4 border-red-700 flex items-center justify-center gap-2"><Icons.ThumbsDown className="w-5 h-5" /> Tidak Etis</button>
+                    </div>
+                </div>
+            );
+        };
+
+        const GameContainer = ({ moduleId }) => {
+            const games = { 1: <GameModule1 />, 2: <GameModule2 />, 3: <GameModule3 />, 4: <GameModule4 /> };
+            const colors = { 1: "from-blue-400 to-cyan-300", 2: "from-emerald-400 to-lime-300", 3: "from-purple-400 to-pink-300", 4: "from-rose-400 to-orange-300" };
+            return (
+                <div className="my-12 animate-fade-in-up">
+                    <div className={`max-w-md mx-auto bg-gradient-to-br ${colors[moduleId]} p-1.5 rounded-3xl shadow-xl transform rotate-1 hover:rotate-0 transition-all duration-500`}>
+                        <div className="bg-white/90 backdrop-blur rounded-2xl p-6 relative overflow-hidden border-4 border-white/50">
+                            <div className="absolute -top-6 -right-6 p-4 opacity-10 rotate-12"><Icons.Gamepad2 className="w-32 h-32" /></div>
+                            <div className="flex items-center gap-2 mb-4 text-slate-400 font-black text-xs uppercase tracking-widest border-b pb-2"><Icons.Gamepad2 className="w-4 h-4" /> Zona Interaktif</div>
+                            {games[moduleId]}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const InteractiveIPO = () => {
+            const [input, setInput] = useState("");
+            const [output, setOutput] = useState("...");
+            const handleProcess = () => { if (!input) { setOutput("Masukkan data dulu!"); return; } setOutput(`Data Diproses: ${input.toUpperCase()}`); };
+            return (
+                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-8 rounded-2xl border-2 border-emerald-100 my-6 shadow-sm">
+                    <h4 className="font-bold text-emerald-800 mb-6 flex items-center gap-3 text-lg"><div className="p-2 bg-emerald-200 rounded-lg text-emerald-700"><Icons.Cpu className="w-6 h-6" /></div> Simulasi Konsep IPO</h4>
+                    <div className="flex flex-col md:flex-row gap-4 items-center justify-center bg-white p-6 rounded-xl border border-emerald-100 shadow-inner">
+                        <div className="flex-1 w-full text-center group"><label className="block text-xs font-bold text-slate-400 mb-2 tracking-wider">INPUT (Bahan)</label><input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ketik kata..." className="w-full p-3 border-2 border-slate-200 rounded-xl text-center focus:ring-4 focus:ring-emerald-100 focus:border-emerald-400 outline-none transition font-medium"/></div>
+                        <div className="hidden md:block text-slate-300 animate-pulse">➜</div>
+                        <div className="flex-1 w-full text-center"><label className="block text-xs font-bold text-emerald-600 mb-2 tracking-wider">PROSES (Mesin)</label><button onClick={handleProcess} className="w-full bg-emerald-500 text-white p-3 rounded-xl hover:bg-emerald-600 transition font-bold shadow-lg hover:shadow-emerald-200 shadow-emerald-100">Ubah ke Kapital</button></div>
+                        <div className="hidden md:block text-slate-300 animate-pulse">➜</div>
+                        <div className="flex-1 w-full text-center"><label className="block text-xs font-bold text-slate-400 mb-2 tracking-wider">OUTPUT (Hasil)</label><div className="w-full p-3 bg-slate-800 text-green-400 border-2 border-slate-700 rounded-xl font-mono font-bold shadow-inner">{output}</div></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Quiz = ({ moduleId, user, onComplete }) => {
+            const questions = quizzes[moduleId];
+            const [answers, setAnswers] = useState({});
+            const [isSubmitted, setIsSubmitted] = useState(false);
+            const [score, setScore] = useState(0);
+
+            const handleSelect = (qIdx, optIdx) => { if (isSubmitted) return; setAnswers(prev => ({ ...prev, [qIdx]: optIdx })); };
+            const handleSubmit = () => {
+                let correct = 0;
+                questions.forEach((q, idx) => { if (answers[idx] === q.ans) correct++; });
+                const finalScore = (correct / questions.length) * 100;
+                setScore(finalScore);
+                setIsSubmitted(true);
+                sendToSheet({ type: 'QUIZ', name: user.name, school: user.school, module: `Modul ${moduleId}`, score: finalScore, timestamp: new Date().toISOString() });
+            };
+            const handleRetry = () => { setAnswers({}); setIsSubmitted(false); setScore(0); };
+            const passed = score >= 70;
+
+            return (
+                <div className="mt-8 animate-fade-in-up">
+                    <div className="bg-white rounded-3xl shadow-xl overflow-hidden border-4 border-indigo-50">
+                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-8 flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div><h2 className="text-2xl font-black flex items-center gap-3"><span className="p-2 bg-white/20 rounded-lg"><Icons.Award className="text-yellow-300 w-6 h-6" /></span> Kuis Modul {moduleId}</h2><p className="text-indigo-100 text-sm mt-1 opacity-90">Jawab 10 pertanyaan untuk lanjut ke level berikutnya!</p></div>
+                            {isSubmitted && <div className={`px-6 py-3 rounded-2xl font-black text-2xl shadow-lg transform rotate-2 ${passed ? 'bg-green-400 text-white' : 'bg-red-400 text-white'}`}>Nilai: {score}</div>}
+                        </div>
+                        <div className="p-6 md:p-10 space-y-8 bg-slate-50/50">
+                            {questions.map((q, idx) => (
+                                <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative">
+                                    <span className="absolute -left-3 -top-3 w-8 h-8 bg-indigo-100 text-indigo-600 font-bold rounded-full flex items-center justify-center border-2 border-white shadow-sm">{idx + 1}</span>
+                                    <p className="font-bold text-slate-800 mb-4 ml-2 text-lg">{q.q}</p>
+                                    <div className="space-y-3">
+                                        {q.options.map((opt, optIdx) => (
+                                            <button key={optIdx} onClick={() => handleSelect(idx, optIdx)} className={`w-full text-left p-4 rounded-xl border-2 transition flex justify-between items-center font-medium ${!isSubmitted && answers[idx] === optIdx ? 'bg-indigo-50 border-indigo-400 text-indigo-700 shadow-md' : ''} ${!isSubmitted && answers[idx] !== optIdx ? 'border-slate-100 bg-slate-50 hover:bg-white hover:border-indigo-200' : ''} ${isSubmitted && q.ans === optIdx ? 'bg-green-100 border-green-500 text-green-800' : ''} ${isSubmitted && answers[idx] === optIdx && answers[idx] !== q.ans ? 'bg-red-100 border-red-500 text-red-800' : ''}`}><span>{opt}</span>{isSubmitted && q.ans === optIdx && <Icons.CheckCircle className="w-6 h-6 text-green-600" />}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="p-8 bg-white border-t border-slate-100 flex justify-end gap-4">
+                            {!isSubmitted ? <button onClick={handleSubmit} disabled={Object.keys(answers).length < questions.length} className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-8 py-4 rounded-xl font-bold hover:shadow-xl hover:-translate-y-1 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">Kirim Jawaban</button> : <>{!passed && <button onClick={handleRetry} className="bg-slate-200 text-slate-700 px-8 py-4 rounded-xl font-bold hover:bg-slate-300 transition">Ulangi Kuis</button>}{passed && <button onClick={() => onComplete(moduleId)} className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-4 rounded-xl font-bold hover:shadow-lg hover:shadow-green-200 transition flex items-center gap-2 animate-bounce">Lanjut Level Berikutnya <Icons.ChevronRight /></button>}</>}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const LoginPage = ({ onLogin }) => {
+            const [name, setName] = useState("");
+            const [school, setSchool] = useState("");
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (name && school) {
+                    sendToSheet({ type: 'LOGIN', name: name, school: school, timestamp: new Date().toISOString() });
+                    onLogin({ name, school });
+                }
+            };
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-400 flex items-center justify-center p-4">
+                    <div className="bg-white/95 backdrop-blur-md max-w-md w-full rounded-3xl shadow-2xl p-8 border-4 border-white/50 relative overflow-hidden">
+                        <div className="absolute -top-10 -right-10 w-32 h-32 bg-yellow-300 rounded-full blur-2xl opacity-50"></div>
+                        <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-cyan-300 rounded-full blur-2xl opacity-50"></div>
+                        <div className="text-center mb-8 relative z-10">
+                            <div className="inline-flex bg-gradient-to-tr from-indigo-600 to-purple-600 p-5 rounded-2xl mb-4 shadow-lg shadow-indigo-200 transform rotate-3">
+                                <img src="https://cdn-icons-png.flaticon.com/512/3662/3662830.png" className="w-10 h-10 filter invert brightness-0" alt="Logo Koding" />
+                            </div>
+                            <h1 className="text-3xl font-black text-slate-800 tracking-tight">Ayo Belajar!</h1>
+                            <h2 className="text-lg font-bold text-indigo-500">Koding & AI Seru</h2>
+                            <p className="text-slate-400 text-sm mt-2">Isi data diri dulu ya, sobat pembelajar!</p>
+                        </div>
+                        <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
+                            <div><label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider ml-1">Nama Lengkap</label><input required type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full p-4 border-2 border-slate-100 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition bg-slate-50 font-medium text-slate-700" placeholder="Contoh: Budi Santoso"/></div>
+                            <div><label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider ml-1">Asal Sekolah</label><input required type="text" value={school} onChange={(e) => setSchool(e.target.value)} className="w-full p-4 border-2 border-slate-100 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition bg-slate-50 font-medium text-slate-700" placeholder="Contoh: SMA Negeri 1 Jakarta"/></div>
+                            <button type="submit" className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 rounded-xl transition shadow-xl hover:shadow-indigo-300 hover:-translate-y-1 flex items-center justify-center gap-2 mt-4">Mulai Petualangan <Icons.ChevronRight className="w-5 h-5" /></button>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [activeModuleId, setActiveModuleId] = useState(1);
+            const [activeTab, setActiveTab] = useState('material');
+            const [isSidebarOpen, setSidebarOpen] = useState(false);
+            const [view, setView] = useState('module');
+            const [progress, setProgress] = useState({ 1: { locked: false, completed: false }, 2: { locked: true, completed: false }, 3: { locked: true, completed: false }, 4: { locked: true, completed: false } });
+
+            useEffect(() => { if (view === 'module') { setActiveTab('material'); window.scrollTo(0,0); } }, [activeModuleId, view]);
+
+            const handleLogin = (userData) => setUser(userData);
+            const handleModuleComplete = (moduleId) => {
+                const nextId = moduleId + 1;
+                setProgress(prev => ({ ...prev, [moduleId]: { ...prev[moduleId], completed: true }, [nextId]: prev[nextId] ? { ...prev[nextId], locked: false } : undefined }));
+                if (nextId <= modules.length) setActiveModuleId(nextId);
+            };
+            const handleNextAction = () => { if (activeTab === 'material') { setActiveTab('quiz'); window.scrollTo(0,0); } };
+
+            if (!user) return <LoginPage onLogin={handleLogin} />;
+
+            const activeModule = modules.find(m => m.id === activeModuleId);
+            const themeGradients = { blue: "from-sky-50 to-white", emerald: "from-green-50 to-white", purple: "from-purple-50 to-white", rose: "from-orange-50 to-white" };
+            const currentGradient = view === 'info' ? "from-indigo-50 to-white" : themeGradients[activeModule.color];
+
+            const activeStyles = {
+              blue: "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-200",
+              emerald: "bg-gradient-to-r from-emerald-500 to-lime-500 text-white shadow-lg shadow-emerald-200",
+              purple: "bg-gradient-to-r from-purple-500 to-fuchsia-500 text-white shadow-lg shadow-purple-200",
+              rose: "bg-gradient-to-r from-rose-500 to-orange-500 text-white shadow-lg shadow-rose-200"
+            };
+
+            return (
+                <div className={`min-h-screen bg-gradient-to-br ${currentGradient} font-sans text-slate-800 flex flex-col md:flex-row transition-colors duration-500`}>
+                    <div className="md:hidden bg-white/80 backdrop-blur border-b p-4 flex justify-between items-center sticky top-0 z-50">
+                        <div className="font-black text-lg text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center gap-2"><Icons.BrainCircuit className="text-indigo-600" /> Koding & AI</div>
+                        <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="p-2 text-slate-600 bg-slate-100 rounded-lg">{isSidebarOpen ? <Icons.X /> : <Icons.Menu />}</button>
+                    </div>
+                    <aside className={`fixed inset-y-0 left-0 z-40 w-80 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 md:block`}>
+                        <div className="p-8 border-b border-slate-100 bg-gradient-to-b from-white to-slate-50/50">
+                            <h1 className="text-2xl font-black text-slate-800 flex items-center gap-2 tracking-tight"><span className="w-10 h-10 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200"><Icons.BrainCircuit className="w-6 h-6" /></span> Koding & AI</h1>
+                            <div className="mt-6 bg-white p-4 rounded-2xl border-2 border-slate-100 shadow-sm relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-yellow-100 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+                                <div className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">Peserta Didik</div>
+                                <div className="font-bold text-slate-800 text-lg truncate">{user.name}</div>
+                                <div className="text-xs text-slate-500 truncate font-medium">{user.school}</div>
+                            </div>
+                        </div>
+                        <nav className="p-6 space-y-3 overflow-y-auto h-[calc(100vh-200px)]">
+                            {modules.map((mod) => {
+                                const isLocked = progress[mod.id]?.locked;
+                                const isCompleted = progress[mod.id]?.completed;
+                                const isActive = activeModuleId === mod.id && view === 'module';
+                                return (
+                                    <button key={mod.id} disabled={isLocked} onClick={() => { setActiveModuleId(mod.id); setView('module'); setSidebarOpen(false); window.scrollTo(0,0); }} className={`w-full text-left p-4 rounded-2xl flex items-center gap-4 transition-all duration-300 relative group ${isActive ? activeStyles[mod.color] : isLocked ? 'bg-slate-50 text-slate-400 cursor-not-allowed opacity-60 grayscale' : 'bg-white hover:bg-slate-50 text-slate-600 hover:scale-[1.02]'}`}>
+                                        <span className={`p-2.5 rounded-xl flex items-center justify-center transition-colors ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-white group-hover:shadow-sm'}`}>{isLocked ? <Icons.Lock className="w-5 h-5" /> : isCompleted ? <Icons.CheckCircle className="w-5 h-5 text-green-500" /> : mod.icon}</span>
+                                        <div className="flex-1"><div className={`text-[10px] uppercase font-black tracking-widest ${isActive ? 'text-white/80' : 'text-slate-400'}`}>Modul {mod.id}</div><div className="text-sm font-bold truncate">{mod.title.split(':')[1]}</div></div>
+                                        {isActive && <div className="absolute right-4 w-2 h-2 bg-white rounded-full animate-pulse"></div>}
+                                    </button>
+                                );
+                            })}
+                            <button onClick={() => { setView('info'); setSidebarOpen(false); window.scrollTo(0,0); }} className={`w-full text-left p-4 rounded-2xl flex items-center gap-4 transition-all duration-300 relative group mt-4 border-t-2 border-slate-50 ${view === 'info' ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-200' : 'bg-white hover:bg-slate-50 text-slate-600 hover:scale-[1.02]'}`}>
+                                <span className={`p-2.5 rounded-xl flex items-center justify-center transition-colors ${view === 'info' ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-500 group-hover:bg-white group-hover:shadow-sm'}`}><Icons.Info className="w-5 h-5" /></span>
+                                <div className="flex-1"><div className="text-sm font-bold truncate">Informasi</div></div>
+                                {view === 'info' && <div className="absolute right-4 w-2 h-2 bg-white rounded-full animate-pulse"></div>}
+                            </button>
+                        </nav>
+                        <div className="absolute bottom-0 w-full p-6 bg-gradient-to-t from-white via-white to-transparent"><button onClick={() => setUser(null)} className="flex items-center justify-center gap-2 text-slate-500 hover:text-red-500 text-sm font-bold w-full p-3 rounded-xl hover:bg-red-50 transition border-2 border-transparent hover:border-red-100"><Icons.LogOut className="w-4 h-4" /> Keluar</button></div>
+                    </aside>
+                    <main className="flex-1 overflow-y-auto h-screen p-4 md:p-8 lg:p-12 scroll-smooth">
+                        {view === 'info' ? <InfoView /> : (
+                            <div className="max-w-4xl mx-auto space-y-8 pb-24">
+                                <header className="space-y-6">
+                                    <div className="flex flex-wrap items-center gap-3"><Badge text={`MODUL ${activeModule.id}`} color={activeModule.color} /><div className="flex items-center gap-2 text-sm font-bold text-slate-500 bg-white/80 backdrop-blur px-4 py-1.5 rounded-full border border-slate-200 shadow-sm"><Icons.Clock className="w-4 h-4 text-orange-400" /> 60 Menit</div>{progress[activeModule.id]?.completed && <div className="flex items-center gap-2 text-sm font-bold text-green-700 bg-green-100 px-4 py-1.5 rounded-full border border-green-200"><Icons.CheckCircle className="w-4 h-4" /> Selesai</div>}</div>
+                                    <div className="relative"><h1 className={`text-4xl md:text-5xl font-black text-slate-900 leading-tight mb-4 tracking-tight`}>{activeModule.title.split(':')[1]}</h1><div className={`h-2 w-24 rounded-full bg-gradient-to-r from-${activeModule.color}-400 to-${activeModule.color}-200`}></div></div>
+                                    <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden"><div className={`absolute top-0 left-0 w-2 h-full bg-${activeModule.color}-500`}></div><p className="text-lg text-slate-600 leading-relaxed font-medium relative z-10">{activeModule.content.intro}</p><div className={`absolute -bottom-10 -right-10 w-40 h-40 bg-${activeModule.color}-50 rounded-full opacity-50 blur-2xl`}></div></div>
+                                </header>
+                                <div className="flex p-1 bg-slate-100/50 backdrop-blur rounded-2xl mt-8 w-fit border border-slate-200">
+                                    <button onClick={() => setActiveTab('material')} className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-all duration-300 ${activeTab === 'material' ? 'bg-white text-slate-800 shadow-md transform scale-105' : 'text-slate-500 hover:text-slate-700'}`}><Icons.FileText className={`w-4 h-4 ${activeTab === 'material' ? 'text-indigo-500' : ''}`} /> Materi</button>
+                                    <button onClick={() => setActiveTab('quiz')} className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-all duration-300 ${activeTab === 'quiz' ? 'bg-white text-slate-800 shadow-md transform scale-105' : 'text-slate-500 hover:text-slate-700'}`}>{progress[activeModule.id]?.completed ? <Icons.CheckCircle className="w-4 h-4 text-green-500" /> : <Icons.HelpCircle className="w-4 h-4 text-orange-400" />} Kuis</button>
+                                </div>
+                                <div className="min-h-[400px]">
+                                    {activeTab === 'material' ? (
+                                        <div className="space-y-12 mt-8">
+                                            {activeModule.content.sections.map((section, idx) => (
+                                                <section key={idx} className="animate-fade-in-up">
+                                                    <h2 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-3"><span className={`bg-${activeModule.color}-100 text-${activeModule.color}-600 w-10 h-10 rounded-xl flex items-center justify-center text-lg shadow-sm border-2 border-white`}>{idx + 1}</span>{section.title}</h2>
+                                                    {(!section.type || section.type === 'list') && <div className="space-y-4">{section.items.map((item, i) => <Card key={i} color={activeModule.color} className="group"><h3 className={`font-bold text-lg text-slate-800 mb-2 group-hover:text-${activeModule.color}-600 transition-colors`}>{item.subtitle}</h3><p className="text-slate-600 leading-relaxed">{item.text}</p></Card>)}</div>}
+                                                    {section.type === 'grid' && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{section.items.map((item, i) => <Card key={i} color={activeModule.color} className="relative overflow-hidden"><div className={`absolute top-0 right-0 p-4 opacity-5 transform scale-150 text-${activeModule.color}-500`}>{item.icon}</div><div className={`text-${activeModule.color}-500 mb-4 bg-${activeModule.color}-50 w-fit p-3 rounded-xl`}>{item.icon}</div><h3 className="font-bold text-slate-800 mb-2 text-lg">{item.title}</h3><p className="text-sm text-slate-600 font-medium">{item.text}</p></Card>)}</div>}
+                                                    {section.type === 'comparison' && <div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div className="bg-white p-8 rounded-3xl border-2 border-slate-100 shadow-sm relative group hover:border-blue-200 transition-colors"><div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Konsep 01</div><h3 className="text-2xl font-black text-blue-600 mb-4">{section.left.title}</h3><p className="text-slate-600 font-medium">{section.left.text}</p></div><div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-8 rounded-3xl shadow-lg text-white relative overflow-hidden transform md:translate-y-4"><div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl -mr-10 -mt-10"></div><div className="text-xs font-black uppercase tracking-widest text-indigo-200 mb-2 relative z-10">Konsep 02</div><h3 className="text-2xl font-black text-white mb-4 relative z-10">{section.right.title}</h3><p className="text-indigo-100 font-medium relative z-10">{section.right.text}</p></div></div>}
+                                                    {section.type === 'cards' && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{section.items.map((item, i) => <div key={i} className="bg-white p-6 rounded-2xl border-2 border-slate-100 shadow-sm hover:border-emerald-400 hover:shadow-emerald-100 transition duration-300 group"><h3 className="font-bold text-emerald-700 mb-2 text-lg group-hover:translate-x-1 transition-transform">{item.title}</h3><p className="text-slate-600 mb-4 text-sm font-medium">{item.text}</p><div className="bg-yellow-50 text-yellow-700 px-3 py-2 rounded-lg text-xs font-bold flex items-start gap-2"><Icons.Lightbulb className="w-4 h-4 shrink-0" />{item.example}</div></div>)}</div>}
+                                                    {section.type === 'list_highlight' && <ul className="space-y-3">{section.items.map((item, i) => <li key={i} className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition"><div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0"><Icons.CheckCircle className="w-5 h-5 text-green-600" /></div><span className="text-slate-700 font-bold">{item}</span></li>)}</ul>}
+                                                    {section.type === 'alert' && <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-6 flex gap-4 shadow-sm"><div className="bg-white p-2 rounded-full h-fit shadow-sm"><Icons.AlertTriangle className="w-6 h-6 text-amber-500" /></div><div><h4 className="font-bold text-amber-900 mb-1 text-lg">Penting Diingat!</h4><p className="text-amber-800 text-sm font-medium leading-relaxed">{section.text}</p></div></div>}
+                                                    {section.type === 'grid_simple' && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{section.items.map((item, i) => <div key={i} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col hover:-translate-y-1 transition duration-300"><span className="text-xs font-black text-rose-400 uppercase tracking-wider mb-2">{item.label}</span><span className="text-slate-800 font-bold text-lg">{item.val}</span></div>)}</div>}
+                                                    {section.type === 'checklist' && <div className="space-y-2">{section.items.map((item, i) => <div key={i} className="flex items-center gap-3 p-4 bg-emerald-50/50 rounded-xl text-emerald-900 font-bold border border-emerald-100"><div className="w-3 h-3 rounded-full bg-emerald-400 shadow-sm shadow-emerald-200" />{item}</div>)}</div>}
+                                                    {section.type === 'interactive_ipo' && <InteractiveIPO />}
+                                                </section>
+                                            ))}
+                                            <GameContainer moduleId={activeModule.id} />
+                                            <div className="mt-12 p-1 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-3xl shadow-lg transform hover:scale-[1.01] transition duration-300 animate-fade-in-up">
+                                                <div className="bg-white rounded-[20px] p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                                                    <div className="flex items-center gap-5"><div className="p-4 bg-blue-50 rounded-2xl text-blue-600"><Icons.FileText className="w-10 h-10" /></div><div><h3 className="font-black text-slate-800 text-xl">Modul Lengkap PDF</h3><p className="text-slate-500 font-medium">Baca materi lengkap untuk pemahaman lebih dalam.</p></div></div>
+                                                    <a href={activeModule.driveLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-8 py-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 hover:shadow-xl transition whitespace-nowrap">Buka PDF <Icons.ExternalLink className="w-4 h-4" /></a>
+                                                </div>
+                                            </div>
+                                            <div className="pt-12 mt-12 flex justify-end"><button onClick={handleNextAction} className={`flex items-center gap-3 bg-gradient-to-r from-${activeModule.color}-500 to-${activeModule.color}-600 text-white px-8 py-4 rounded-2xl font-bold hover:shadow-xl hover:shadow-${activeModule.color}-200 hover:-translate-y-1 transition duration-300`}>Mulai Kuis Evaluasi <Icons.ChevronRight className="w-6 h-6" /></button></div>
+                                        </div>
+                                    ) : <Quiz moduleId={activeModule.id} user={user} onComplete={handleModuleComplete} />}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
